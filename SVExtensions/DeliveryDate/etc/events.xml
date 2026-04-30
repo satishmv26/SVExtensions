@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
+    <!-- Observer keeps sales_order_address.delivery_date in sync after order submit. -->
+    <event name="checkout_submit_all_after">
+        <observer name="svextensions_deliverydate_persist_order_address"
+                  instance="SVExtensions\DeliveryDate\Observer\PersistOrderAddressDeliveryDate"/>
+    </event>
+</config>

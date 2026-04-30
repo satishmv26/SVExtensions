@@ -1,0 +1,10 @@
+<?php
+/** @var \SVExtensions\DeliveryDate\Block\Order\DeliveryDate $block */
+$deliveryDate = $block->getDeliveryDate();
+?>
+<?php if ($deliveryDate) : ?>
+    <tr>
+        <th><?= $block->escapeHtml(__('Delivery Date')) ?></th>
+        <td><?= $block->escapeHtml($deliveryDate) ?></td>
+    </tr>
+<?php endif; ?>

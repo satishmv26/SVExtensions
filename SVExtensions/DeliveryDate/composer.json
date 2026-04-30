@@ -1,0 +1,32 @@
+{
+    "name": "svextensions/module-delivery-date",
+    "description": "Magento 2 custom module for DeliveryDate features.",
+    "type": "magento2-module",
+    "version": "1.0.0",
+    "license": "proprietary",
+    "authors": [
+        {
+            "name": "SVExtensions"
+        }
+    ],
+    "require": {
+        "php": ">=8.1",
+        "magento/framework": ">=103.0"
+    },
+    "autoload": {
+        "files": [
+            "registration.php"
+        ],
+        "psr-4": {
+            "SVExtensions\\DeliveryDate\\": ""
+        }
+    },
+    "extra": {
+        "map": [
+            [
+                "*",
+                "SVExtensions/DeliveryDate"
+            ]
+        ]
+    }
+}
