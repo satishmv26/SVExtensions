@@ -1,0 +1,68 @@
+<?php if ($block->isEnabled()): ?>
+<script>
+(function () {
+
+    function normalize(text) {
+        return String(text || '')
+            .replace(/\u00a0/g, ' ')
+            .replace(/[\n\r\t]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .replace(/[:\-–—]+$/, '')
+            .trim()
+            .toLowerCase();
+    }
+
+    function apply(map) {
+        if (!map) return;
+
+        const elements = document.querySelectorAll(
+            'button, a, label, span, .action'
+        );
+
+        elements.forEach(el => {
+            if (el.children.length > 0) return;
+
+            let text = normalize(el.textContent);
+
+            if (map[text]) {
+                el.textContent = map[text];
+            }
+        });
+    }
+
+    function start(map) {
+        if (!map) return;
+
+        window.dynamicLabelMap = map;
+
+        // Initial run
+        apply(map);
+
+        // 🔥 Observe DOM changes (checkout fix)
+        const observer = new MutationObserver(() => {
+            apply(map);
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    }
+
+    // FAST PATH
+    if (window.dynamicLabelMap) {
+        start(window.dynamicLabelMap);
+        return;
+    }
+
+    // FALLBACK
+    fetch('<?= $block->getUrl("dynamiclabel/index/index") ?>', {
+        cache: 'force-cache'
+    })
+    .then(res => res.json())
+    .then(map => start(map))
+    .catch(() => {});
+
+})();
+</script>
+<?php endif; ?>

@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+
+    <type name="Magento\Framework\Console\CommandList">
+        <arguments>
+            <argument name="commands" xsi:type="array">
+                <item name="svextensions_import_variables" xsi:type="object">
+                    SVExtensions\DynamicLabel\Console\Command\ImportCustomVariablesCommand
+                </item>
+                <!-- ADD THIS -->
+                <item name="svextensions_delete_variables" xsi:type="object">
+                    SVExtensions\DynamicLabel\Console\Command\DeleteCustomVariablesCommand
+                </item>
+            </argument>
+        </arguments>
+    </type>
+
+    <type name="Magento\Variable\Model\Variable">
+        <plugin name="lj_dynamic_label_flush" type="SVExtensions\DynamicLabel\Plugin\VariableSavePlugin"/>
+    </type>
+    <type name="Magento\Framework\View\Layout">
+        <plugin name="esi_dynamic_label" type="Magento\PageCache\Model\Layout\DepersonalizePlugin"/>
+    </type>
+
+</config>

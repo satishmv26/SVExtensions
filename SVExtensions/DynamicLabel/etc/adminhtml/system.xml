@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+
+    <system>
+
+        <tab id="svextensions" translate="label" sortOrder="900">
+            <label>SV Extensions</label>
+        </tab>
+
+        <section id="dynamiclabel" translate="label" sortOrder="900"
+                 showInDefault="1" showInWebsite="1" showInStore="1">
+
+            <label>Dynamic Label Manager</label>
+            <tab>svextensions</tab>
+            <resource>SVExtensions_DynamicLabel::config</resource>
+
+            <group id="general" translate="label" sortOrder="10"
+                   showInDefault="1" showInWebsite="1" showInStore="1">
+
+                <label>General</label>
+
+                <field id="enabled" translate="label" type="select" sortOrder="10"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+
+                    <label>Enable Dynamic Labels</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>
+                        This feature dynamically replaces frontend translatable text using Custom Variables.
+                    </comment>
+
+                </field>
+                <!-- Value Type -->
+                <field id="value_type" translate="label comment" type="select" sortOrder="20"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+
+                    <label>Variable Value Type</label>
+                    <source_model>SVExtensions\DynamicLabel\Model\Config\Source\ValueType</source_model>
+
+                    <comment>
+                        Plain Value → Recommended for buttons/labels  
+                        HTML Value → Use only when HTML formatting is required
+                    </comment>
+                </field>
+
+            </group>
+
+        </section>
+
+    </system>
+</config>

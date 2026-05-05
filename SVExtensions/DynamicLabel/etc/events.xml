@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
+
+    <event name="magento_variable_save_after">
+        <observer name="lj_dynamic_label_flush"
+                  instance="SVExtensions\DynamicLabel\Observer\FlushCache"/>
+    </event>
+
+</config>
