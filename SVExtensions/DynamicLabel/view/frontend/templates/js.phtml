@@ -15,9 +15,7 @@
     function apply(map) {
         if (!map) return;
 
-        const elements = document.querySelectorAll(
-            'button, a, label, span, .action'
-        );
+        const elements = document.querySelectorAll('button, a, label, span, .action');
 
         elements.forEach(el => {
             if (el.children.length > 0) return;

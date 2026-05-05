@@ -1,295 +1,187 @@
-# SVExtensions_DynamicLabel
-
-**Magento 2 / Adobe Commerce Module**  
-Vendor: `SVExtensions` | Module: `DynamicLabel`
-
----
+# Dynamic Label Manager for Adobe Commerce
 
 ## Overview
 
-Allows admin users to override any frontend text label globally from the Admin Panel — **without** modifying translation CSV files, editing templates, or triggering a code deployment.
+Dynamic Label Manager enables real-time frontend text replacement using Magento Custom Variables—without relying on translation CSV files.
 
-Changes are reflected immediately on the next page request after saving.
-
----
-
-## Architecture & How It Works
-
-### Core Hook: `afterRender` Plugin on `Magento\Framework\Phrase\Renderer\Translate`
-
-Every string passed through `__()` in Magento — whether in a `.phtml` template, a PHP class, a block, or a UI component — is eventually resolved by `Magento\Framework\Phrase\Renderer\Translate::render()`.
-
-This module intercepts that single method via an `afterRender` plugin:
-
-```
-__('Add to Cart')
-  └─▶ Magento\Framework\Phrase\Renderer\Translate::render()
-        └─▶ SVExtensions\DynamicLabel\Plugin\TranslateRendererPlugin::afterRender()
-              └─▶ DB override map lookup (memory-cached per request)
-                    └─▶ Returns "Add to Basket" (or original if no override)
-```
-
-This approach requires **zero template changes** — existing `__()` calls are overridden transparently.
-
-### Override Priority (when multiple records match)
-
-| Store View      | Locale          | Priority        |
-|-----------------|-----------------|-----------------|
-| Specific store  | Specific locale | **Highest** (3) |
-| Specific store  | All Locales     | High (2)        |
-| All Store Views | Specific locale | Medium (1)      |
-| All Store Views | All Locales     | Global fallback (0) |
-
-### Cache Strategy
-
-- **Cache tag**: `LJDYNAMIC_LABEL`
-- **Cache key**: `LJDYNAMIC_LABEL_MAP_{storeId}_{locale}`
-- **TTL**: 86,400 seconds (1 day)
-- **Invalidation**: Targeted tag-based clean on every label save/delete — never a full flush
-- **In-process map**: Loaded once per request into PHP memory — zero DB hits per phrase
+This module is designed for high-performance environments and allows merchants to update key UI labels instantly from the Admin panel without code deployment.
 
 ---
 
-## Installation
+## Key Features
 
-### Via Composer (recommended)
+* Replace frontend labels dynamically using Custom Variables
+* No dependency on `i18n/*.csv` translation files
+* Supports **Plain Text** and **HTML** values
+* Store view–specific label overrides
+* CDN optimized (Fastly / Varnish support)
+* Works without CDN (Magento Open Source compatible)
+* CLI tools for bulk import and cleanup
+* Tag-based cache invalidation (no full cache flush)
+* Multi-layer architecture:
 
-```bash
-composer require svextensions/module-dynamic-label
-bin/magento module:enable SVExtensions_DynamicLabel
-bin/magento setup:upgrade
-bin/magento setup:di:compile
-bin/magento cache:flush
-```
+  * PHP Plugin (server-side rendering)
+  * ESI block (CDN acceleration)
+  * JavaScript fallback (browser-level)
 
-### Manual Installation
+---
 
-1. Copy the module directory to `app/code/SVExtensions/DynamicLabel/`
-2. Run:
+## Use Cases
 
-```bash
-bin/magento module:enable SVExtensions_DynamicLabel
-bin/magento setup:upgrade
-bin/magento setup:di:compile
-bin/magento cache:flush
-```
+* Change “Add to Cart” → “Add to Basket”
+* Update “Sign In” → “Login”
+* Modify CTA labels during campaigns
+* Perform UI A/B testing without deployment
+* Customize store-specific terminology
+
+---
+
+## How It Works
+
+1. Admin creates Custom Variables
+2. Module generates a normalized label map
+3. Labels are replaced at multiple layers:
+
+   * PHP rendering (fastest)
+   * CDN edge (ESI block)
+   * Browser fallback (JavaScript)
+
+This ensures maximum compatibility and performance across environments.
 
 ---
 
 ## Configuration
 
-### Enable / Disable
+**Path:**
+`Stores → Configuration → Dynamic Label`
 
-**Admin → Stores → Configuration → LJ International → Dynamic Labels → Enable Dynamic Labels**
+### Settings
 
-When disabled, the plugin exits immediately — no DB or cache access occurs. This is a zero-cost kill switch.
+* **Enable Module**
+  Enable or disable functionality
 
-### Debug Mode
+* **Value Type**
 
-**Admin → Stores → Configuration → LJ International → Dynamic Labels → Debug Mode**
-
-> ⚠️ **Never enable on production.** Logs every phrase lookup to `var/log/debug.log`.
-
----
-
-## Usage
-
-### Admin Panel
-
-Navigate to **Content → Dynamic Labels** to manage overrides.
-
-#### Creating a Label Override
-
-| Field | Description |
-|-------|-------------|
-| **Enable Override** | Toggle to activate/deactivate without deleting |
-| **Store View** | "All Store Views" for global, or a specific store |
-| **Locale** | "All Locales" or a specific locale (e.g. `en_US`) |
-| **Original Text** | Exact phrase passed to `__()` — case-sensitive |
-| **Override Text** | Replacement text shown to customers |
-
-#### Example — Rename "Add to Cart" globally
-
-| Field | Value |
-|-------|-------|
-| Store View | All Store Views |
-| Locale | All Locales |
-| Original Text | `Add to Cart` |
-| Override Text | `Add to Basket` |
-
-#### Example — Per-locale override
-
-| Field | Value |
-|-------|-------|
-| Store View | UK Store |
-| Locale | `en_GB` |
-| Original Text | `Zip Code` |
-| Override Text | `Postcode` |
-
-### Placeholder Support
-
-If the original phrase contains `%1`, `%2` placeholders, include them in the override:
-
-| Original | `Hello, %1! You have %2 item(s) in your cart.` |
-|----------|--------------------------------------------------|
-| Override | `Welcome back, %1! Your basket has %2 item(s).` |
+  * Plain Text
+  * HTML
 
 ---
 
-## Finding Phrase Keys
+## Installation
 
-The **Original Text** must match exactly what is passed to `__()` in the source code.
-
-### Common examples
-
-| Page / Element | Phrase Key |
-|---------------|------------|
-| Add to Cart button | `Add to Cart` |
-| Out of stock label | `Out of Stock` |
-| My Account link | `My Account` |
-| Checkout button | `Proceed to Checkout` |
-| Search placeholder | `Search entire store here...` |
-| Newsletter signup | `Subscribe` |
-
-### Finding custom keys
-
-1. Search templates: `grep -r "__('Your phrase'" app/design/ vendor/magento/`
-2. Check browser source — look for the text in `data-mage-init` or visible on page
-3. Enable Debug Mode in staging and check `var/log/debug.log` for lookup hits
-
----
-
-## Database Schema
-
-**Table**: `svextensions_dynamic_label`
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `label_id` | INT UNSIGNED PK | Auto-increment |
-| `store_id` | SMALLINT | 0 = global |
-| `locale` | VARCHAR(20) | Empty = all locales |
-| `original_text` | TEXT | Phrase key (max 1000 chars) |
-| `override_text` | TEXT | Replacement text (max 1000 chars) |
-| `is_active` | SMALLINT | 1 = active |
-| `created_at` | TIMESTAMP | Auto |
-| `updated_at` | TIMESTAMP | Auto-update |
-
-**Unique index** on `(store_id, locale, original_text)` — prevents duplicate overrides for the same combination.
-
----
-
-## Module File Structure
-
-```
-SVExtensions/DynamicLabel/
-├── Api/
-│   ├── Data/LabelInterface.php          # Entity contract
-│   └── LabelRepositoryInterface.php     # Repository contract
-├── Block/Adminhtml/Label/Edit/
-│   ├── DeleteButton.php                 # Form toolbar delete button
-│   ├── SaveAndContinueButton.php        # Form toolbar save+continue button
-│   └── UsageGuide.php                  # Collapsible help block
-├── Controller/Adminhtml/Label/
-│   ├── Delete.php                       # Single delete
-│   ├── Edit.php                         # Edit form page
-│   ├── Index.php                        # Grid listing page
-│   ├── InlineEdit.php                   # Grid inline edit (JSON)
-│   ├── MassDelete.php                   # Bulk delete
-│   ├── MassStatus.php                   # Bulk enable/disable
-│   ├── NewAction.php                    # New label form
-│   └── Save.php                         # Form POST handler
-├── Cron/
-│   └── WarmLabelCache.php               # Daily cache warm-up job
-├── Helper/
-│   └── Data.php                         # Store / locale option helpers
-├── Model/
-│   ├── Label.php                        # ORM model
-│   ├── LabelDataProvider.php            # UI form data provider
-│   ├── LabelRepository.php             # Repository + cache management
-│   ├── ResourceModel/
-│   │   ├── Label.php                    # DB resource model
-│   │   └── Label/
-│   │       ├── Collection.php           # Base collection
-│   │       └── Grid/Collection.php      # SearchResultInterface grid collection
-│   └── Source/
-│       ├── IsActive.php                 # Status options
-│       ├── Locale.php                   # Locale options
-│       └── Store.php                    # Store options
-├── Observer/
-│   └── InvalidateLabelCacheObserver.php # Cache tag invalidation on save/delete
-├── Plugin/
-│   └── TranslateRendererPlugin.php      # ⭐ Core: intercepts __() rendering
-├── Setup/Patch/Data/
-│   └── InstallDynamicLabelTable.php     # DB table creation (revertable)
-├── Ui/Component/Listing/Column/
-│   └── LabelActions.php                 # Grid row Edit/Delete actions
-├── etc/
-│   ├── acl.xml                          # ACL resource definitions
-│   ├── adminhtml/
-│   │   ├── di.xml                       # Grid data provider wiring
-│   │   ├── menu.xml                     # Admin menu entry
-│   │   ├── routes.xml                   # Admin route: ljdynamiclabel
-│   │   └── system.xml                   # Stores > Config settings
-│   ├── config.xml                       # Default config values
-│   ├── crontab.xml                      # Daily cache warm-up schedule
-│   ├── di.xml                           # Plugin registration, preferences
-│   ├── events.xml                       # Save/delete cache invalidation events
-│   └── module.xml                       # Module declaration
-├── view/adminhtml/
-│   ├── layout/
-│   │   ├── ljdynamiclabel_label_edit.xml
-│   │   ├── ljdynamiclabel_label_index.xml
-│   │   └── ljdynamiclabel_label_new.xml
-│   ├── templates/label/
-│   │   └── usage_guide.phtml            # Admin help panel
-│   └── ui_component/
-│       ├── ljdynamiclabel_label_form.xml     # Edit/create form
-│       └── ljdynamiclabel_label_listing.xml  # Grid listing
-├── composer.json
-└── registration.php
-```
-
----
-
-## Production Considerations
-
-### What is safe on production
-
-- ✅ Adding new label overrides — only `LJDYNAMIC_LABEL` cache tag is cleaned
-- ✅ Disabling a label — same targeted cache clean
-- ✅ Mass enabling/disabling — single targeted clean
-- ✅ Module disable via config — zero overhead, plugin short-circuits immediately
-
-### What to avoid
-
-- ❌ Enabling Debug Mode on production — writes a log entry per `__()` call
-- ❌ Setting very large numbers of overrides (10,000+) — the entire map is serialized in cache; keep it to hundreds
-
-### Rollback
-
-To fully revert the module:
+### Composer
 
 ```bash
-bin/magento module:disable SVExtensions_DynamicLabel
+composer require svextensions/module-dynamiclabel
+bin/magento module:enable SVExtensions_DynamicLabel
 bin/magento setup:upgrade
-# Optionally drop the table:
-# bin/magento setup:db-declaration:generate-whitelist --module-name SVExtensions_DynamicLabel
+bin/magento cache:flush
 ```
 
-The `InstallDynamicLabelTable` patch implements `PatchRevertableInterface` so `setup:rollback` is also supported.
+---
+
+## CLI Commands
+
+### Import Custom Variables
+
+```bash
+bin/magento sv:dynamiclabel:import var/import.csv
+```
+
+### Delete Custom Variables
+
+```bash
+bin/magento sv:dynamiclabel:delete
+```
+
+---
+
+## Example
+
+| Original Label     | Replaced Label |
+| ------------------ | -------------- |
+| Add to Cart        | Add to Basket  |
+| Sign In            | Login          |
+| View and Edit Cart | My Cart        |
+
+---
+
+## Performance & Caching
+
+* Uses Magento cache with custom cache tags
+* Supports Fastly soft purge (grace mode)
+* Avoids full-page cache flush
+* Optimized for high-traffic environments
 
 ---
 
 ## Compatibility
 
-| Platform | Version |
-|----------|---------|
-| Magento Open Source | 2.4.x |
-| Adobe Commerce | 2.4.x |
-| PHP | 8.1, 8.2, 8.3 |
+* Magento Open Source 2.4.x
+* Adobe Commerce (Cloud & On-Prem)
+* Fastly CDN
+* Varnish Cache
+* Luma and custom themes
+
+---
+
+## Limitations
+
+* Intended for **short UI labels only**
+* Not recommended for:
+
+  * Long paragraphs or content blocks
+  * Complex translations
+* Some dynamically rendered Knockout (KO) components (e.g., checkout) may not be fully covered
+* Magento’s native CSV translation is still recommended for full localization
+
+---
+
+## Best Practices
+
+* Use for key UI labels (buttons, links, headings)
+* Keep variable names normalized (lowercase, trimmed)
+* Avoid special characters mismatch
+* Test changes per store view
+
+---
+
+## Security & Scope
+
+* Applies only to frontend area
+* Does not affect admin panel
+* Uses Magento ACL for configuration access
+
+---
+
+## Troubleshooting
+
+### Labels not updating?
+
+* Ensure module is enabled
+* Verify Custom Variable exists
+* Clear cache once:
+
+  ```bash
+  bin/magento cache:clean
+  ```
+
+---
+
+## Support
+
+For issues or feature requests, contact the extension provider.
 
 ---
 
 ## License
 
-Proprietary — LJ International. All rights reserved.
+Proprietary (or specify your license type)
+
+---
+
+## Summary
+
+Dynamic Label Manager provides a lightweight, high-performance alternative to Magento translation CSV for managing key frontend labels dynamically—ideal for modern commerce workflows.
+
+---
